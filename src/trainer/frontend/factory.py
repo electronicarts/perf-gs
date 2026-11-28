@@ -72,8 +72,7 @@ class SlangSessions:
 
     def __init__(self, device: spy.Device) -> None:
         self._device = device
-        own = device.slang_session.desc.compiler_options.defines
-        self._sessions = {frozenset(own.items()): device.slang_session}
+        self._sessions: dict[frozenset[tuple[str, str]], spy.SlangSession] = {}
 
     def session_for(self, spec: ShaderSpecialization) -> spy.SlangSession:
         defines = shader_defines(spec) or {}

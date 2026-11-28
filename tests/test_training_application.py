@@ -11,6 +11,13 @@ import numpy as np
 from PIL import Image
 
 from trainer.backend.compute.device import create_device
+from trainer.backend.compute.fixed_point import (
+    FIXED_POINT_INT32,
+    FIXED_POINT_INT64,
+    fixed_point_format,
+    fixed_point_shader_defines,
+    supports_int64_atomics,
+)
 from trainer.config.config import (
     AppearanceConfig,
     LossConfig,
@@ -80,9 +87,72 @@ def test_a_run_compiles_in_the_session_of_its_own_specialization() -> None:
     opaque = shader_specialization(_parse("--hub", "--splat-kernel", "opaque_core"))
     session = sessions.session_for(opaque)
     assert session is not device.slang_session
-    assert session.desc.compiler_options.defines == shader_defines(opaque)
+    assert session.desc.compiler_options.defines == {
+        **fixed_point_shader_defines(device),
+        **(shader_defines(opaque) or {}),
+    }
     assert sessions.session_for(opaque) is session
     device.close()
+
+
+def test_fixed_point_format_follows_device_atomic_int64_capability(monkeypatch) -> None:
+    import slangpy as spy
+    from trainer.backend.compute import device as device_module
+
+    def fake_device(api_name: str, features: set, defines: dict[str, str] | None = None):
+        return SimpleNamespace(
+            info=SimpleNamespace(api_name=api_name),
+            has_feature=lambda feature: feature in features,
+            slang_session=SimpleNamespace(desc=SimpleNamespace(
+                compiler_options=SimpleNamespace(defines=dict(defines or {})))),
+            close=lambda: closed.append(True),
+        )
+
+    closed: list[bool] = []
+    vk_64 = fake_device("Vulkan", {spy.Feature.atomic_int64})
+    vk_32 = fake_device("Vulkan", set())
+    dx_64 = fake_device("D3D12", {spy.Feature.sm_6_6, spy.Feature.int64})
+    dx_32 = fake_device("D3D12", {spy.Feature.int64})
+
+    assert supports_int64_atomics(vk_64) and fixed_point_format(vk_64) is FIXED_POINT_INT64
+    assert not supports_int64_atomics(vk_32) and fixed_point_format(vk_32) is FIXED_POINT_INT32
+    assert supports_int64_atomics(dx_64) and fixed_point_format(dx_64) is FIXED_POINT_INT64
+    assert not supports_int64_atomics(dx_32) and fixed_point_format(dx_32) is FIXED_POINT_INT32
+
+    opens: list[dict[str, str] | None] = []
+
+    def fake_open(_backend, _debug, _sdi, defines):
+        opens.append(defines)
+        return fake_device("Vulkan", set(), defines)
+
+    monkeypatch.setattr(device_module, "_open_device", fake_open)
+    device = device_module.create_device(backend="vulkan", defines={"ADAM_MOMENTS_BF16": "1"})
+    assert opens == [
+        {"ADAM_MOMENTS_BF16": "1"},
+        {"FIXED_POINT_INT32": "1", "ADAM_MOMENTS_BF16": "1"},
+    ]
+    assert closed == [True]
+    assert fixed_point_shader_defines(device) == {"FIXED_POINT_INT32": "1"}
+
+
+def test_int32_device_preserves_fixed_point_define_across_slang_sessions() -> None:
+    launch = shader_specialization(_parse("--hub"))
+    device = create_device(defines={"FIXED_POINT_INT32": "1", **(shader_defines(launch) or {})})
+    try:
+        assert fixed_point_format(device) is FIXED_POINT_INT32
+        sessions = SlangSessions(device)
+        assert sessions.session_for(launch) is device.slang_session
+
+        opaque = shader_specialization(_parse("--hub", "--splat-kernel", "opaque_core"))
+        session = sessions.session_for(opaque)
+        assert session is not device.slang_session
+        assert session.desc.compiler_options.defines == {
+            "FIXED_POINT_INT32": "1",
+            **(shader_defines(opaque) or {}),
+        }
+        assert fixed_point_format(session) is FIXED_POINT_INT32
+    finally:
+        device.close()
 
 
 def test_position_lr_horizon_follows_iters_unless_overridden() -> None:
@@ -402,3 +472,24 @@ def test_stbn_variables_absent_when_the_feature_is_off() -> None:
     loop = object.__new__(TrainingLoop)
     loop.stbn_sampler = None
     assert loop._stbn_variables(0) is None
+
+
+def test_prepare_run_creates_viewer_only_when_absent() -> None:
+    for has_viewer in (False, True):
+        app = object.__new__(TrainingApplication)
+        app.viewer = object() if has_viewer else None
+        app.scene_context = SimpleNamespace(name="scene")
+        steps: list[str] = []
+        app._prepare_scene = lambda scene_dir, prepared=None, s=steps: s.append(f"scene:{scene_dir}:{prepared}")
+        app._create_pipeline_for_scene = lambda scene, s=steps: s.append("pipeline")
+        app._prepare_textures = lambda s=steps: s.append("textures")
+        app._create_viewer = lambda scene, s=steps: s.append("viewer")
+        app._start_profiler = lambda s=steps: s.append("profiler")
+        app._create_training_services = lambda s=steps: s.append("services")
+
+        app.prepare_run("my_scene", "cached")
+
+        expected = ["scene:my_scene:cached", "pipeline", "textures", "profiler", "services"]
+        if not has_viewer:
+            expected.insert(3, "viewer")
+        assert steps == expected

@@ -54,22 +54,22 @@ void backwardRasterize(
     RWTexture2D<float4> output_image,
     RWTexture2D<uint> gaussian_count_per_pixel,
     RWTexture2D<float4> dL_dC_texture,
-    RWStructuredBuffer<int64_t> grad_mean_x,
-    RWStructuredBuffer<int64_t> grad_mean_y,
-    RWStructuredBuffer<int64_t> grad_mean_z,
-    RWStructuredBuffer<int64_t> grad_log_scale_x,
-    RWStructuredBuffer<int64_t> grad_log_scale_y,
-    RWStructuredBuffer<int64_t> grad_log_scale_z,
-    RWStructuredBuffer<int64_t> grad_rot_w,
-    RWStructuredBuffer<int64_t> grad_rot_x,
-    RWStructuredBuffer<int64_t> grad_rot_y,
-    RWStructuredBuffer<int64_t> grad_rot_z,
-    RWStructuredBuffer<int64_t> grad_opacity,
-    RWStructuredBuffer<int64_t> grad_color_r,
-    RWStructuredBuffer<int64_t> grad_color_g,
-    RWStructuredBuffer<int64_t> grad_color_b,
-    RWStructuredBuffer<int64_t> grad_2d_x_iter,
-    RWStructuredBuffer<int64_t> grad_2d_y_iter)
+    RWStructuredBuffer<fixed_t> grad_mean_x,
+    RWStructuredBuffer<fixed_t> grad_mean_y,
+    RWStructuredBuffer<fixed_t> grad_mean_z,
+    RWStructuredBuffer<fixed_t> grad_log_scale_x,
+    RWStructuredBuffer<fixed_t> grad_log_scale_y,
+    RWStructuredBuffer<fixed_t> grad_log_scale_z,
+    RWStructuredBuffer<fixed_t> grad_rot_w,
+    RWStructuredBuffer<fixed_t> grad_rot_x,
+    RWStructuredBuffer<fixed_t> grad_rot_y,
+    RWStructuredBuffer<fixed_t> grad_rot_z,
+    RWStructuredBuffer<fixed_t> grad_opacity,
+    RWStructuredBuffer<fixed_t> grad_color_r,
+    RWStructuredBuffer<fixed_t> grad_color_g,
+    RWStructuredBuffer<fixed_t> grad_color_b,
+    RWStructuredBuffer<fixed_t> grad_2d_x_iter,
+    RWStructuredBuffer<fixed_t> grad_2d_y_iter)
 {
     uint2 pixel = dtid.xy;
     uint tid = gtid.y * TILE_WIDTH + gtid.x;
@@ -265,7 +265,7 @@ void backwardRasterize(
         if (tid < NUM_ATOMICS)
         {
             float v = gs_atomic[tid];
-            int64_t fx = toFixed(v);
+            fixed_t fx = toFixed(v);
             if      (tid == 0)  InterlockedAdd(grad_opacity[g_idx],     fx);
             else if (tid == 1)  InterlockedAdd(grad_color_r[g_idx],     fx);
             else if (tid == 2)  InterlockedAdd(grad_color_g[g_idx],     fx);

@@ -267,7 +267,9 @@ def build_parser() -> argparse.ArgumentParser:
     _shared(parser, "splat_kernel")
     _shared(parser, "splat_profile_power")
     _shared(parser, "splat_profile_onset")
-    parser.add_argument("--backend", type=str, default="vulkan", choices=["vulkan", "d3d12"])
+    parser.add_argument("--backend", type=str, default="vulkan",
+                        choices=["vulkan", "d3d12"],
+                        help="GPU API (macOS uses Vulkan through MoltenVK)")
     parser.add_argument("--seed", type=int, default=0)
     _shared(parser, "mip_splatting")
     parser.add_argument("--mip-kernel-size", type=float, default=0.1,

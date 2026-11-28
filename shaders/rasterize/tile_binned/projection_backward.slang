@@ -18,25 +18,25 @@ void projectionBackward(
     StructuredBuffer<uint> num_gaussians_counter,
     StructuredBuffer<CameraData> camera,
     // Tile-summed BlendData seeds; this kernel is their only reader, so it also resets them.
-    RWStructuredBuffer<int64_t> grad_mean2d_x,
-    RWStructuredBuffer<int64_t> grad_mean2d_y,
-    RWStructuredBuffer<int64_t> grad_conic_a,
-    RWStructuredBuffer<int64_t> grad_conic_b,
-    RWStructuredBuffer<int64_t> grad_conic_c,
-    RWStructuredBuffer<int64_t> grad_amplitude,
+    RWStructuredBuffer<fixed_t> grad_mean2d_x,
+    RWStructuredBuffer<fixed_t> grad_mean2d_y,
+    RWStructuredBuffer<fixed_t> grad_conic_a,
+    RWStructuredBuffer<fixed_t> grad_conic_b,
+    RWStructuredBuffer<fixed_t> grad_conic_c,
+    RWStructuredBuffer<fixed_t> grad_amplitude,
     // The blend backward already added any direct (opaque_core falloff) term; this adds the amplitude's.
-    RWStructuredBuffer<int64_t> grad_opacity,
+    RWStructuredBuffer<fixed_t> grad_opacity,
     // 3D parameter gradients (this kernel is the sole writer per gaussian).
-    RWStructuredBuffer<int64_t> grad_mean_x,
-    RWStructuredBuffer<int64_t> grad_mean_y,
-    RWStructuredBuffer<int64_t> grad_mean_z,
-    RWStructuredBuffer<int64_t> grad_log_scale_x,
-    RWStructuredBuffer<int64_t> grad_log_scale_y,
-    RWStructuredBuffer<int64_t> grad_log_scale_z,
-    RWStructuredBuffer<int64_t> grad_rot_w,
-    RWStructuredBuffer<int64_t> grad_rot_x,
-    RWStructuredBuffer<int64_t> grad_rot_y,
-    RWStructuredBuffer<int64_t> grad_rot_z,
+    RWStructuredBuffer<fixed_t> grad_mean_x,
+    RWStructuredBuffer<fixed_t> grad_mean_y,
+    RWStructuredBuffer<fixed_t> grad_mean_z,
+    RWStructuredBuffer<fixed_t> grad_log_scale_x,
+    RWStructuredBuffer<fixed_t> grad_log_scale_y,
+    RWStructuredBuffer<fixed_t> grad_log_scale_z,
+    RWStructuredBuffer<fixed_t> grad_rot_w,
+    RWStructuredBuffer<fixed_t> grad_rot_x,
+    RWStructuredBuffer<fixed_t> grad_rot_y,
+    RWStructuredBuffer<fixed_t> grad_rot_z,
     // Mip-Splatting inputs to rebuild bin_count's exact cov2d; filter_3D is garbage unless mip_enabled.
     StructuredBuffer<float> filter_3D,
     uniform uint mip_enabled,
@@ -52,16 +52,16 @@ void projectionBackward(
     // Culled clusters have zero 2D seeds; their 3D grads stay zero (Adam's freeze-state contract).
     if (cluster_visible[gid / CLUSTER_SIZE] == 0u) return;
 
-    int64_t seed_mean_x = grad_mean2d_x[gid], seed_mean_y = grad_mean2d_y[gid];
-    int64_t seed_conic_a = grad_conic_a[gid], seed_conic_b = grad_conic_b[gid];
-    int64_t seed_conic_c = grad_conic_c[gid], seed_amplitude = grad_amplitude[gid];
+    fixed_t seed_mean_x = grad_mean2d_x[gid], seed_mean_y = grad_mean2d_y[gid];
+    fixed_t seed_conic_a = grad_conic_a[gid], seed_conic_b = grad_conic_b[gid];
+    fixed_t seed_conic_c = grad_conic_c[gid], seed_amplitude = grad_amplitude[gid];
     // Reset for the next step; untouched slots are already zero, so no capacity-wide clear is needed.
     if ((seed_mean_x | seed_mean_y | seed_conic_a | seed_conic_b | seed_conic_c | seed_amplitude)
-        != int64_t(0))
+        != fixed_t(0))
     {
-        grad_mean2d_x[gid] = int64_t(0); grad_mean2d_y[gid] = int64_t(0);
-        grad_conic_a[gid] = int64_t(0); grad_conic_b[gid] = int64_t(0);
-        grad_conic_c[gid] = int64_t(0); grad_amplitude[gid] = int64_t(0);
+        grad_mean2d_x[gid] = fixed_t(0); grad_mean2d_y[gid] = fixed_t(0);
+        grad_conic_a[gid] = fixed_t(0); grad_conic_b[gid] = fixed_t(0);
+        grad_conic_c[gid] = fixed_t(0); grad_amplitude[gid] = fixed_t(0);
     }
     else
     {
@@ -91,7 +91,7 @@ void projectionBackward(
     bwd_diff(conicFromCov)(dp_cov2d, grad_conic);
     var dp_logit = diffPair(g.opacity);
     var dp_comp = diffPair(comp);
-    if (seed_amplitude != int64_t(0))
+    if (seed_amplitude != fixed_t(0))
     {
         bwd_diff(splatAmplitude)(dp_logit, dp_comp, fromFixed(seed_amplitude));
         grad_opacity[gid] += toFixed(dp_logit.d);

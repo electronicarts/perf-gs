@@ -31,7 +31,7 @@ void rankFamilies(uint3 tid : SV_DispatchThreadID, StructuredBuffer<uint> pre_co
     RWStructuredBuffer<uint> histogram, RWStructuredBuffer<uint> action,
     RWStructuredBuffer<uint> factor_x, RWStructuredBuffer<uint> factor_y, RWStructuredBuffer<uint> factor_z,
     StructuredBuffer<uint> eta_x, StructuredBuffer<uint> eta_y, StructuredBuffer<uint> eta_z,
-    StructuredBuffer<uint> views, StructuredBuffer<int64_t> gradient,
+    StructuredBuffer<uint> views, StructuredBuffer<fixed_t> gradient,
     uniform float gradient_scale, uniform uint capacity, uniform uint apply)
 {
     uint i = tid.x;

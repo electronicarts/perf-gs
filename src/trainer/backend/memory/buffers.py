@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Electronic Arts Inc. All rights reserved.
 
-"""GPU resources grouped by owning component; gradients are SoA int64 fixed-point
-accumulators so every backend can use integer atomics."""
+"""GPU resources grouped by owner, including backend-sized fixed-point gradient accumulators."""
 
 from __future__ import annotations
 
@@ -22,6 +21,7 @@ from trainer.backend.compute.execution import (
     TILE_HEIGHT,
     TILE_WIDTH,
 )
+from trainer.backend.compute.fixed_point import FIXED_POINT_INT64, fixed_point_format
 from trainer.backend.memory.layout import StructLayout
 
 # One fixed-point gradient accumulator per optimized scalar, in GaussianChannel order.
@@ -326,6 +326,7 @@ class _Alloc:
     device: spy.Device
     width: int
     height: int
+    fixed_dtype: str = FIXED_POINT_INT64.buffer_dtype
 
     def typed_buffer(self, label: str, dtype, *shape) -> spy.NDBuffer:
         return _make_labeled_ndbuffer(
@@ -334,8 +335,8 @@ class _Alloc:
     def uint_buffer(self, label: str, *shape) -> spy.NDBuffer:
         return self.typed_buffer(label, "uint", *shape)
 
-    def i64_buffer(self, label: str, *shape) -> spy.NDBuffer:
-        return self.typed_buffer(label, "int64_t", *shape)
+    def fixed_buffer(self, label: str, *shape) -> spy.NDBuffer:
+        return self.typed_buffer(label, self.fixed_dtype, *shape)
 
     def indirect_buffer(self, label: str, records: int = 1) -> spy.NDBuffer:
         return _make_labeled_ndbuffer(
@@ -443,7 +444,8 @@ def allocate(
 ) -> GaussianBuffers:
     """Allocate everything forward, backward, Adam and densification use."""
     types = _reflect_types(shared_data_module)
-    allocator = _allocator if _allocator is not None else _Alloc(device, width, height)
+    fixed_dtype = fixed_point_format(shared_data_module or device).buffer_dtype
+    allocator = _allocator if _allocator is not None else _Alloc(device, width, height, fixed_dtype)
     num_tiles_x, num_tiles_y = _tile_grid(width, height)
     num_tiles = num_tiles_x * num_tiles_y
     max_buckets = max_raster_buckets(max_sort_pairs, num_tiles)
@@ -479,19 +481,19 @@ def allocate(
         ssim_m2=allocator.tex(spy.Format.rgba32_float, "ssim_m2"),
         ssim_m3=allocator.tex(spy.Format.rgba32_float, "ssim_m3"),
     )
-    grad_params = {name: allocator.i64_buffer(f"grad_buffers[{name}]", max_splats)
+    grad_params = {name: allocator.fixed_buffer(f"grad_buffers[{name}]", max_splats)
                    for name in GRAD_SCALAR_COMPONENTS}
-    grad_seeds = {name: allocator.i64_buffer(f"grad_2d_seed_buffers[{name}]", max_splats)
+    grad_seeds = {name: allocator.fixed_buffer(f"grad_2d_seed_buffers[{name}]", max_splats)
                   for name in GRAD_2D_SEED_COMPONENTS}
     adam_state = allocator.typed_buffer("adam.state", types.adam, max_splats)
 
-    grad_mean_2d_mag = allocator.i64_buffer("densification.grad_mean_2d_mag", max_splats)
+    grad_mean_2d_mag = allocator.fixed_buffer("densification.grad_mean_2d_mag", max_splats)
     visibility_count = allocator.uint_buffer("densification.visibility_count", max_splats)
-    blend_weight = allocator.i64_buffer("densification.blend_weight", max_splats)
+    blend_weight = allocator.fixed_buffer("densification.blend_weight", max_splats)
     gradients = GradientResources(
         params=grad_params, seeds=grad_seeds,
-        screen_x=allocator.i64_buffer("grad_2d_x_iter", max_splats),
-        screen_y=allocator.i64_buffer("grad_2d_y_iter", max_splats),
+        screen_x=allocator.fixed_buffer("grad_2d_x_iter", max_splats),
+        screen_y=allocator.fixed_buffer("grad_2d_y_iter", max_splats),
     )
     filter_3d = allocator.typed_buffer("primitive.filter_3d", "float", max_splats)
     primitive = PrimitiveStorage(primitive_values, active_count, filter_3d, types.gaussian_layout)
@@ -663,13 +665,15 @@ def allocate_viewer(
 class _AllocationCounter:
     """Runs the real allocation recipe, counting bytes instead of allocating."""
 
-    def __init__(self, width: int, height: int) -> None:
+    def __init__(self, width: int, height: int,
+                 fixed_dtype: str = FIXED_POINT_INT64.buffer_dtype) -> None:
         self.pixels = width * height
+        self.fixed_dtype = fixed_dtype
         self.total = 0
 
     def typed_buffer(self, label, dtype, *shape):
         from types import SimpleNamespace
-        stride = ({"uint": 4, "float": 4, "int64_t": 8, "uint2": 8, "float4": 16}[dtype]
+        stride = ({"uint": 4, "int": 4, "float": 4, "int64_t": 8, "uint2": 8, "float4": 16}[dtype]
                   if isinstance(dtype, str)
                   else int(dtype.buffer_layout.reflection.stride))
         size = int(np.prod(shape)) * stride
@@ -680,8 +684,8 @@ class _AllocationCounter:
     def uint_buffer(self, label, *shape):
         return self.typed_buffer(label, "uint", *shape)
 
-    def i64_buffer(self, label, *shape):
-        return self.typed_buffer(label, "int64_t", *shape)
+    def fixed_buffer(self, label, *shape):
+        return self.typed_buffer(label, self.fixed_dtype, *shape)
 
     def indirect_buffer(self, label, records=1):
         return self.uint_buffer(label, 3 * records)
@@ -696,7 +700,8 @@ class _AllocationCounter:
 
 def estimate_allocation_bytes(shared_data_module, *, viewer_only=False, **sizes) -> int:
     """Base buffer/texture bytes; excludes sampler resources and driver overhead."""
-    counter = _AllocationCounter(sizes["width"], sizes["height"])
+    fixed_dtype = fixed_point_format(shared_data_module).buffer_dtype
+    counter = _AllocationCounter(sizes["width"], sizes["height"], fixed_dtype)
     allocator = allocate_viewer if viewer_only else allocate
     allocator(device=None, shared_data_module=shared_data_module,
               _allocator=counter, **sizes)

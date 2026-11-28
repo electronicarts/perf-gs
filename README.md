@@ -1,6 +1,7 @@
 # PERF-GS
 
 [![Project Page](https://img.shields.io/badge/Project-Page-blue.svg)](https://electronicarts.github.io/perf-gs/)
+[![Platforms: Windows and macOS](https://img.shields.io/badge/platforms-Windows%20%2B%20macOS-4A6B82)](#requirements)
 [![Languages: Python and Slang](https://img.shields.io/badge/languages-Python%20%2B%20Slang-CF7434)](#architecture-from-a-high-level)
 [![Backends: Vulkan and D3D12](https://img.shields.io/badge/backends-Vulkan%20%2B%20D3D12-355B3E)](#requirements)
 
@@ -53,7 +54,7 @@ Python picks a training camera, sets the learning rates and decides when to grow
 
 A *primitive* supplies its projection, its coverage at a pixel, and its color. The *compositor* takes care of blending it over what's behind it. With Slang.D we can mark the projection and coverage functions as differentiable. Change the math in one of those functions and Slang generates its derivatives from the same source. For performance reasons, we still need to write the outer shell's backward passes ourselves. There's a small disk primitive in the tests that uses the same forward blend loop with its own coverage function. [Primitive interfaces](https://github.com/electronicarts/perf-gs/blob/HEAD/shaders/core/interfaces.slang) - [Disk primitive test](https://github.com/electronicarts/perf-gs/blob/HEAD/tests/test_disk_primitive.py)
 
-Vulkan is the cross-platform target. D3D12 on Windows uses the same shader sources. Training has no CUDA or PyTorch dependency. One detail that mattered across vendors was wave size. We've run Vulkan training on Windows with the Nvidia RTX 4050 Laptop GPU, Nvidia RTX 4080, Nvidia RTX 4090 and AMD Radeon RX 7900 XT. Linux and macOS are unverified, yet.
+Vulkan is the cross-platform target. D3D12 on Windows uses the same shader sources. Training has no CUDA or PyTorch dependency. One detail that mattered across vendors was wave size. We've run Vulkan training on Windows with the Nvidia RTX 4050 Laptop GPU, Nvidia RTX 4080, Nvidia RTX 4090 and AMD Radeon RX 7900 XT. Linux remains unverified, yet.
 
 <a name="where-the-first-splats-come-from"></a>
 
@@ -124,8 +125,8 @@ This runs Quality's 3,500 steps and continues with the model it just trained. Th
 
 ## Requirements
 
-- **OS and Python.** Python 3.10+. Tested on Windows 11. Linux and macOS are unverified.
-- **GPU.** Tested on the NVIDIA RTX 4050 Laptop GPU (6 GB), RTX 4080 (16 GB), RTX 4090 (24 GB) and AMD Radeon RX 7900 XT (20 GB). The rasterizer supports 32- and 64-lane waves and uses 64-bit integer buffer atomics through Vulkan (default) or Direct3D 12 (Windows).
+- **OS and Python.** Python 3.10+. Tested on Windows 11 and macOS on Apple M2. Linux remains unverified.
+- **GPU.** Tested on the NVIDIA RTX 4050 Laptop GPU (6 GB), RTX 4080 (16 GB), RTX 4090 (24 GB), AMD Radeon RX 7900 XT (20 GB), and Apple M2 through Vulkan/MoltenVK. The rasterizer supports 32- and 64-lane waves; Windows uses 64-bit integer buffer atomics, while MoltenVK uses 32-bit fixed-point accumulators.
 - **VRAM.** On Mip-NeRF 360, Balanced used 2.72-2.90 GiB at loop end on the RTX 4080 and 4090 and 2.76-2.95 GiB on the RX 7900 XT. Peak and viewer usage can be higher. [GPU memory measurements](docs/benchmarks.md)
 
 ## Quickstart
@@ -166,6 +167,22 @@ Perf-gs was designed to be extremely simple to setup and install.
   <a href="assets/train_hub.png"><img src="assets/train_hub.png" width="49%" alt="Train scene in the hub after 3,000 steps, with the Export PLY button visible"></a>
   <a href="assets/room_hub.png"><img src="assets/room_hub.png" width="49%" alt="Room scene in the hub before training, with the Balanced preset selected"></a>
 </p>
+
+### macOS (Apple Silicon)
+
+PERF-GS can run on Apple Silicon through Vulkan and MoltenVK. Install the Vulkan loader and MoltenVK with Homebrew, and install Apple’s Metal Toolchain (Xcode Command Line Tools alone may not include it):
+
+```sh
+brew install molten-vk vulkan-loader
+xcodebuild -downloadComponent MetalToolchain
+python3 -m venv .venv
+.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/python -m trainer.frontend.app --hub
+```
+
+Note: On macOS, PERF-GS uses 32-bit fixed-point gradient accumulators because MoltenVK does not support the 64-bit atomics used by the default Vulkan path. Other Apple GPU generations and scenes have not been benchmarked. The screenshot below records the M2 run.
+
+![PERF-GS completed a 3,000-step Balanced truck reconstruction on Apple M2](docs/images/macos-moltenvk-truck.png)
 
 ### Train from the command line
 

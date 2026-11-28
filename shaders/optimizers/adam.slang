@@ -62,20 +62,20 @@ void adamStep(
     RWStructuredBuffer<Gaussian3D> gaussians,
     RWStructuredBuffer<AdamState> adam_state,
     StructuredBuffer<uint> num_gaussians_counter,
-    RWStructuredBuffer<int64_t> grad_mean_x,
-    RWStructuredBuffer<int64_t> grad_mean_y,
-    RWStructuredBuffer<int64_t> grad_mean_z,
-    RWStructuredBuffer<int64_t> grad_log_scale_x,
-    RWStructuredBuffer<int64_t> grad_log_scale_y,
-    RWStructuredBuffer<int64_t> grad_log_scale_z,
-    RWStructuredBuffer<int64_t> grad_rot_w,
-    RWStructuredBuffer<int64_t> grad_rot_x,
-    RWStructuredBuffer<int64_t> grad_rot_y,
-    RWStructuredBuffer<int64_t> grad_rot_z,
-    RWStructuredBuffer<int64_t> grad_opacity,
-    RWStructuredBuffer<int64_t> grad_color_r,
-    RWStructuredBuffer<int64_t> grad_color_g,
-    RWStructuredBuffer<int64_t> grad_color_b,
+    RWStructuredBuffer<fixed_t> grad_mean_x,
+    RWStructuredBuffer<fixed_t> grad_mean_y,
+    RWStructuredBuffer<fixed_t> grad_mean_z,
+    RWStructuredBuffer<fixed_t> grad_log_scale_x,
+    RWStructuredBuffer<fixed_t> grad_log_scale_y,
+    RWStructuredBuffer<fixed_t> grad_log_scale_z,
+    RWStructuredBuffer<fixed_t> grad_rot_w,
+    RWStructuredBuffer<fixed_t> grad_rot_x,
+    RWStructuredBuffer<fixed_t> grad_rot_y,
+    RWStructuredBuffer<fixed_t> grad_rot_z,
+    RWStructuredBuffer<fixed_t> grad_opacity,
+    RWStructuredBuffer<fixed_t> grad_color_r,
+    RWStructuredBuffer<fixed_t> grad_color_g,
+    RWStructuredBuffer<fixed_t> grad_color_b,
     // Cluster-cull mask; all ones when culling is disabled.
     StructuredBuffer<uint> cluster_visible,
     uniform AdamConfig cfg,
@@ -136,11 +136,11 @@ void adamStep(
     gaussians[idx] = g;
     adam_state[idx] = storeAdamMoments(s, adamRoundingSeed(idx, cfg.step));
 
-    grad_mean_x[idx] = int64_t(0); grad_mean_y[idx] = int64_t(0); grad_mean_z[idx] = int64_t(0);
-    grad_log_scale_x[idx] = int64_t(0); grad_log_scale_y[idx] = int64_t(0); grad_log_scale_z[idx] = int64_t(0);
-    grad_rot_w[idx] = int64_t(0); grad_rot_x[idx] = int64_t(0); grad_rot_y[idx] = int64_t(0); grad_rot_z[idx] = int64_t(0);
-    grad_opacity[idx] = int64_t(0);
-    grad_color_r[idx] = int64_t(0); grad_color_g[idx] = int64_t(0); grad_color_b[idx] = int64_t(0);
+    grad_mean_x[idx] = fixed_t(0); grad_mean_y[idx] = fixed_t(0); grad_mean_z[idx] = fixed_t(0);
+    grad_log_scale_x[idx] = fixed_t(0); grad_log_scale_y[idx] = fixed_t(0); grad_log_scale_z[idx] = fixed_t(0);
+    grad_rot_w[idx] = fixed_t(0); grad_rot_x[idx] = fixed_t(0); grad_rot_y[idx] = fixed_t(0); grad_rot_z[idx] = fixed_t(0);
+    grad_opacity[idx] = fixed_t(0);
+    grad_color_r[idx] = fixed_t(0); grad_color_g[idx] = fixed_t(0); grad_color_b[idx] = fixed_t(0);
 }
 
 #include "primitives/gaussian/sh_layout.slang"

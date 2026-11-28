@@ -74,8 +74,8 @@ void scoreStructureAware(
     StructuredBuffer<CameraData> camera,
     Texture2D<float4> structure_tensor,
     StructuredBuffer<uint> tile_count_per_gaussian,
-    StructuredBuffer<int64_t> grad_2d_x_iter,
-    StructuredBuffer<int64_t> grad_2d_y_iter,
+    StructuredBuffer<fixed_t> grad_2d_x_iter,
+    StructuredBuffer<fixed_t> grad_2d_y_iter,
     RWStructuredBuffer<uint> eta_n_high, RWStructuredBuffer<uint> eta_n_low,
     RWStructuredBuffer<uint> eta_max_x, RWStructuredBuffer<uint> eta_max_y, RWStructuredBuffer<uint> eta_max_z,
     // Count of views in which this gaussian was on-screen / valid.
@@ -172,9 +172,9 @@ void record_observations(uint gaussian_idx, float eta_x, float eta_y, float eta_
     else if (eta_max_scalar <= ETA_LOW) InterlockedAdd(eta_n_low[gaussian_idx], 1u);
 
     // Per-axis max over views feeds the anisotropic split decision.
-    InterlockedMax(eta_max_x[gaussian_idx], uint(max(eta_x, 0.0) * FIXED_SCALE));
-    InterlockedMax(eta_max_y[gaussian_idx], uint(max(eta_y, 0.0) * FIXED_SCALE));
-    InterlockedMax(eta_max_z[gaussian_idx], uint(max(eta_z, 0.0) * FIXED_SCALE));
+    InterlockedMax(eta_max_x[gaussian_idx], uint(max(eta_x, 0.0) * ETA_FIXED_SCALE));
+    InterlockedMax(eta_max_y[gaussian_idx], uint(max(eta_y, 0.0) * ETA_FIXED_SCALE));
+    InterlockedMax(eta_max_z[gaussian_idx], uint(max(eta_z, 0.0) * ETA_FIXED_SCALE));
 }
 
 [shader("compute")]

@@ -15,7 +15,7 @@ from trainer.frontend.profiling.profiler import apply_profile_session_overrides
 from trainer.frontend.reporting.error_log import report_exception
 from trainer.frontend.scene import holdout_split, split_camera_sets
 from trainer.frontend.viewer.session import (
-    Confirm, DatasetInfo, ERROR, KIND_COLMAP, KIND_IMAGES, OK, ResultInfo,
+    Confirm, DatasetInfo, ERROR, KIND_COLMAP, KIND_IMAGES, OK,
     Session, ToolsState, WARN, format_duration,
 )
 from trainer.frontend.viewer.viewer_control import ViewerSession
@@ -98,7 +98,6 @@ class TrainingHub:
         )
         if self.app.error_log is not None:
             self.app.error_log.attach(self.app.viewer.state)
-        self.app.viewer.start()
 
         state = self.app._viewer.state
         state.set_recon_cuda(self.app.args.recon_cuda)
@@ -106,18 +105,22 @@ class TrainingHub:
                            glomap_bin=self.app.args.glomap_bin,
                            recon_cuda=self.app.args.recon_cuda)
         state.tools(ToolsState.READY if tools.is_ready() else ToolsState.MISSING)
-        if self.app.args.scene:
-            self._hub_dropped(str(self.app.args.scene))
-        else:
-            state.notify("Open or drop a dataset folder", OK)
-        print("[hub] viewer ready.")
 
-        while True:
-            scene_dir = self._hub_choose_scene(tools)
-            if scene_dir is None:
-                print("[hub] window closed; exiting.")
-                return
-            self._hub_train_scene(scene_dir, setup)
+        def serve() -> None:
+            if self.app.args.scene:
+                self._hub_dropped(str(self.app.args.scene))
+            else:
+                state.notify("Open or drop a dataset folder", OK)
+            print("[hub] viewer ready.")
+
+            while True:
+                scene_dir = self._hub_choose_scene(tools)
+                if scene_dir is None:
+                    print("[hub] window closed; exiting.")
+                    return
+                self._hub_train_scene(scene_dir, setup)
+
+        self.app.run_with_viewer(serve)
 
     def _hub_choose_scene(self, tools) -> "str | None":
         """Service panel requests until a scene is ready; ``None`` once the window closes.
@@ -168,8 +171,9 @@ class TrainingHub:
                 state.show_next_run_setup(False)
             elif command in ("browse", "new_dataset"):
                 from slangpy import platform
+                call_ui = self.app._viewer.call_on_main_thread
                 try:
-                    folder = platform.choose_folder_dialog()
+                    folder = call_ui(platform.choose_folder_dialog)
                 except (AttributeError, OSError, RuntimeError):
                     state.notify("Folder picker unavailable. Drop a dataset folder onto the window.", WARN)
                 else:
@@ -268,11 +272,7 @@ class TrainingHub:
             self.app._begin_repeat_run()
             # The panel's settings must become the run's args before anything reads them.
             self._apply_hub_setup(setup)
-            self.app._prepare_scene(scene_dir, self._cached_colmap(scene_dir))
-            self.app._create_pipeline_for_scene(self.app._sceneContext)
-            self.app._prepare_textures()
-            self.app._start_profiler()
-            self.app._create_training_services()
+            self.app.prepare_run(scene_dir, self._cached_colmap(scene_dir))
         except Exception as error:                     # noqa: BLE001
             self._hub_run_failed("building the run", error)
             return
@@ -283,23 +283,20 @@ class TrainingHub:
         self.app.viewer.push_snapshot(self.app._pipeline)  # show the initial gaussians
         state.log(f"Ready to train after {time.perf_counter() - started:.2f} s of setup")
         try:
-            stop_reason = self.app._run_training_and_post(hold_viewer=False)
+            summary = self.app.run_training_and_post(hold_viewer=False)
         except Exception as error:                     # noqa: BLE001
             self._hub_run_failed("training", error)
             return
+        if summary is None:
+            return
         # The pipeline stays alive: Export writes it and the viewer keeps showing it.
-        stats = state.snapshot().stats
         stopped = self.app.viewer.stop_requested()
-        state.training_completed(ResultInfo(
-            iterations=stats.step, target_iterations=stats.total,
-            wall_s=stats.elapsed_s, splats=stats.gaussians,
-            run_dir=str(self.app.paths.root), stop_reason=stop_reason))
         auto_export = self.app.paths.root / "output.ply"
         if (self.app.args.save_ply or self.app.args.compute_final_metrics) and auto_export.is_file():
             state.result_exported(str(auto_export.resolve()), auto_export.stat().st_size / 1024**2)
-        state.notify(f"Training stopped at iteration {stats.step:,}" if stopped
+        state.notify(f"Training stopped at iteration {summary.iterations:,}" if stopped
                      else f"Training complete in "
-                          f"{format_duration(stats.elapsed_s)}", OK)
+                          f"{format_duration(summary.wall_s)}", OK)
         state.log("Training finished")
 
     def _stbn_download_needed(self, setup) -> bool:
@@ -342,8 +339,10 @@ class TrainingHub:
             state.result_failed("Nothing to export yet - train a scene first.")
             state.notify("Nothing to export", WARN)
             return False
+        call_ui = self.app._viewer.call_on_main_thread
         try:
-            path = platform.save_file_dialog([platform.FileDialogFilter("Gaussian model", "*.ply")])
+            filters = [platform.FileDialogFilter("Gaussian model", "*.ply")]
+            path = call_ui(lambda: platform.save_file_dialog(filters))
         except (AttributeError, OSError, RuntimeError):
             path = self.app.paths.root / "output.ply"
             if path.exists():

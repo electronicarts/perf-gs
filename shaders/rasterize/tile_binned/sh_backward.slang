@@ -18,13 +18,13 @@ void shBackward(
     StructuredBuffer<uint> features_rest,
     RWStructuredBuffer<uint> features_rest_grad,
     // Accumulated color gradient (read; clamped channels zeroed for the DC term).
-    RWStructuredBuffer<int64_t> grad_color_r,
-    RWStructuredBuffer<int64_t> grad_color_g,
-    RWStructuredBuffer<int64_t> grad_color_b,
+    RWStructuredBuffer<fixed_t> grad_color_r,
+    RWStructuredBuffer<fixed_t> grad_color_g,
+    RWStructuredBuffer<fixed_t> grad_color_b,
     // Adds the direction->mean term after projection_backward's write (single writer per gid).
-    RWStructuredBuffer<int64_t> grad_mean_x,
-    RWStructuredBuffer<int64_t> grad_mean_y,
-    RWStructuredBuffer<int64_t> grad_mean_z,
+    RWStructuredBuffer<fixed_t> grad_mean_x,
+    RWStructuredBuffer<fixed_t> grad_mean_y,
+    RWStructuredBuffer<fixed_t> grad_mean_z,
     StructuredBuffer<uint> cluster_visible,
     uniform uint active_sh_degree,
     uniform uint rest_floats,
@@ -94,9 +94,9 @@ void shBackward(
     }
 
     // DC gradient is grad_color for unclamped channels; zero the clamped ones.
-    if (mask.x == 0.0) grad_color_r[gid] = int64_t(0);
-    if (mask.y == 0.0) grad_color_g[gid] = int64_t(0);
-    if (mask.z == 0.0) grad_color_b[gid] = int64_t(0);
+    if (mask.x == 0.0) grad_color_r[gid] = fixed_t(0);
+    if (mask.y == 0.0) grad_color_g[gid] = fixed_t(0);
+    if (mask.z == 0.0) grad_color_b[gid] = fixed_t(0);
 
     grad_mean_x[gid] = grad_mean_x[gid] + toFixed(dp_mean.d.x);
     grad_mean_y[gid] = grad_mean_y[gid] + toFixed(dp_mean.d.y);

@@ -11,16 +11,6 @@ Run COLMAP on a folder of photos directly in the **perf-gs** standalone app, or 
 On an **RTX 4090**:
 - *Ultrafast* preset averages **27.13 dB in 10.51 seconds** on the same card.<br>
 - *Quality* preset averages **27.90 dB PSNR in 22.68 seconds** across the nine Mip-NeRF 360 scenes.
-
-Benchmarked on:<br>
-**NVIDIA**
-- 4050 Mobile (6gb)
-- 4080 (16gb)
-- 4090 (24gb)
-**AMD**<br>
-- Radeon RX 7900 XT (20gb)
-**INTEL**
-- TBD
   
 Runs on Windows and MacOs (unbenchmarked on Apple).
 
@@ -29,6 +19,19 @@ The **Quality+** preset continues training until PSNR on training views levels o
 [RTX 4080 comparison with LiteGS, SAD-GS and FastGS](docs/benchmarks.md#rtx-4080-comparison)
 
 As of November 2026, **perf-gs** is, to the best of our knowledge, the fastest publicly available open-source 3D Gaussian Splatting trainer, outperforming competitors such as [LiteGS](https://github.com/MooreThreads/LiteGS), [SAD-GS](https://github.com/LinjieLyu/SADGS) and [FastGS](https://github.com/fastgs/FastGS) in training speed while delivering competitive or superior reconstruction quality, with low VRAM usage.<br>
+
+Benchmarks available for:<br>
+
+**NVIDIA**<br>
+- 4050 Mobile (6gb)
+- 4080 (16gb)
+- 4090 (24gb)
+  
+**AMD**<br>
+- Radeon RX 7900 XT (20gb)
+
+**INTEL**<br>
+- TBD
 
 For GPUs with less VRAM, Balanced streams training images from system RAM. On the **6 GB RTX 4050 Laptop GPU** at 30 W, it averaged **139.88 s per scene** and **2.80 GiB at loop end** across the nine Mip-NeRF 360 scenes. [Laptop preset comparison](#rtx-4050-laptop-gpu) · [VRAM and system RAM breakdown](docs/benchmarks.md#where-memory-goes)
 
@@ -180,7 +183,7 @@ Perf-gs was designed to be extremely simple to setup and install.
   <a href="assets/room_hub.png"><img src="assets/room_hub.png" width="49%" alt="Room scene in the hub before training, with the Balanced preset selected"></a>
 </p>
 
-### macOS (Apple Silicon)
+### macOS-specifics (Apple Silicon)
 
 perf-gs can run on Apple Silicon through Vulkan and MoltenVK. Install the Vulkan loader and MoltenVK with Homebrew, and install Apple’s Metal Toolchain (Xcode Command Line Tools alone may not include it):
 

@@ -7,13 +7,22 @@
 
 **Efficient, extensible, dependency-free & low memory differentiable training in 10 seconds.**
 
-Benchmarks available for AMD Radeon RX 7900 XT (20gb), NVIDIA 4050 Mobile (6gb), NVIDIA 4080 (16gb) & NVIDIA 4090 (24gb).
-Runs on Windows and MacOs (unbenchmarked on Apple).
-
 Run COLMAP on a folder of photos directly in the **perf-gs** standalone app, or open an existing COLMAP scene; train a 3DGS model with Slang on Vulkan or D3D12.<br>
 On an **RTX 4090**:
 - *Ultrafast* preset averages **27.13 dB in 10.51 seconds** on the same card.<br>
 - *Quality* preset averages **27.90 dB PSNR in 22.68 seconds** across the nine Mip-NeRF 360 scenes.
+
+Benchmarked on:
+**NVIDIA**
+- 4050 Mobile (6gb)
+- 4080 (16gb)
+- 4090 (24gb)
+**AMD**
+- Radeon RX 7900 XT (20gb)
+**INTEL**
+- TBD
+  
+Runs on Windows and MacOs (unbenchmarked on Apple).
 
 The **Quality+** preset continues training until PSNR on training views levels off and an **RTX 4090**, it averaged **28.227 dB held-out PSNR** across the same nine scenes, with a mean training loop of **2 min 2 s**.
 

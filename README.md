@@ -5,14 +5,17 @@
 [![Languages: Python and Slang](https://img.shields.io/badge/languages-Python%20%2B%20Slang-CF7434)](#architecture-from-a-high-level)
 [![Backends: Vulkan and D3D12](https://img.shields.io/badge/backends-Vulkan%20%2B%20D3D12-355B3E)](#requirements)
 
-**Efficient, extensible, dependency-free & low memory differentiable training in 10 seconds on an RTX 4090.**
+**Efficient, extensible, dependency-free & low memory differentiable training in 10 seconds.**
 
-Run COLMAP on a folder of photos directly in the PERF-GS standalone app, or open an existing COLMAP scene. Then train a 3D Gaussian Splatting model with Slang on Vulkan or D3D12.<br>
+Benchmarks available for AMD Radeon RX 7900 XT (20gb), NVIDIA 4050 Mobile (6gb), NVIDIA 4080 (16gb) & NVIDIA 4090 (24gb).
+Runs on Windows and MacOs (unbenchmarked on Apple).
+
+Run COLMAP on a folder of photos directly in the **perf-gs** standalone app, or open an existing COLMAP scene; train a 3DGS model with Slang on Vulkan or D3D12.<br>
 On an **RTX 4090**:
-- *Quality* preset averages **27.90 dB PSNR in 22.68 seconds** across the nine Mip-NeRF 360 scenes.
 - *Ultrafast* preset averages **27.13 dB in 10.51 seconds** on the same card.<br>
+- *Quality* preset averages **27.90 dB PSNR in 22.68 seconds** across the nine Mip-NeRF 360 scenes.
 
-The **Quality+** preset continues training until PSNR on training views levels off. On an **RTX 4090**, it averaged **28.227 dB held-out PSNR** across the same nine scenes, with a mean training loop of **2 min 2 s**.
+The **Quality+** preset continues training until PSNR on training views levels off and an **RTX 4090**, it averaged **28.227 dB held-out PSNR** across the same nine scenes, with a mean training loop of **2 min 2 s**.
 
 [RTX 4080 comparison with LiteGS, SAD-GS and FastGS](docs/benchmarks.md#rtx-4080-comparison)
 
@@ -142,12 +145,12 @@ Perf-gs was designed to be extremely simple to setup and install.
    - Or **download the latest source.**: Click **Code -> Download ZIP**.
 
 2. **Open PowerShell in the project folder.**
-3. **Setup venv and install PERF-GS (once)**: In PowerShell, run `py -3.11 --version`.
+3. **Setup venv and install perf-gs (once)**: In PowerShell, run `py -3.11 --version`.
 
    - If you see `Python 3.11` followed by a patch number (for example, `Python 3.11.9`), Python is ready.
    - If you get an error, download and open the **Python install manager** from the [Python for Windows page](https://www.python.org/downloads/windows/). After installing it, reopen PowerShell in the project folder and run `pymanager install 3.11` to download and install Python 3.11.
 
-   Once Python is ready, run these two commands, one at a time, to setup a virtual environemnt and install PERF-GS.
+   Once Python is ready, run these two commands, one at a time, to setup a virtual environemnt and install perfgs.
 
    ```powershell
    py -3.11 -m venv .venv
@@ -170,7 +173,7 @@ Perf-gs was designed to be extremely simple to setup and install.
 
 ### macOS (Apple Silicon)
 
-PERF-GS can run on Apple Silicon through Vulkan and MoltenVK. Install the Vulkan loader and MoltenVK with Homebrew, and install Apple’s Metal Toolchain (Xcode Command Line Tools alone may not include it):
+perf-gs can run on Apple Silicon through Vulkan and MoltenVK. Install the Vulkan loader and MoltenVK with Homebrew, and install Apple’s Metal Toolchain (Xcode Command Line Tools alone may not include it):
 
 ```sh
 brew install molten-vk vulkan-loader
@@ -180,9 +183,9 @@ python3 -m venv .venv
 .venv/bin/python -m trainer.frontend.app --hub
 ```
 
-Note: On macOS, PERF-GS uses 32-bit fixed-point gradient accumulators because MoltenVK does not support the 64-bit atomics used by the default Vulkan path. Other Apple GPU generations and scenes have not been benchmarked. The screenshot below records the M2 run.
+Note: On macOS, perf-gs uses 32-bit fixed-point gradient accumulators because MoltenVK does not support the 64-bit atomics used by the default Vulkan path. Other Apple GPU generations and scenes have not been benchmarked. The screenshot below records the M2 run.
 
-![PERF-GS completed a 3,000-step Balanced truck reconstruction on Apple M2](docs/images/macos-moltenvk-truck.png)
+![perf-gs completed a 3,000-step Balanced truck reconstruction on Apple M2](docs/images/macos-moltenvk-truck.png)
 
 ### Train from the command line
 
@@ -359,12 +362,12 @@ Before you can contribute, EA must have a Contributor License Agreement (CLA) on
 
 ## How to Cite
 
-Scolari, S. (2026). *PERF-GS*. Electronic Arts. <https://github.com/electronicarts/perf-gs>
+Scolari, S. (2026). *perf-gs*. Electronic Arts. <https://github.com/electronicarts/perf-gs>
 
 ```bibtex
 @software{scolari2026perfgs,
   author    = {Scolari, Stefano},
-  title     = {{PERF-GS}},
+  title     = {{perf-gs}},
   year      = {2026},
   publisher = {Electronic Arts},
   url       = {https://github.com/electronicarts/perf-gs}

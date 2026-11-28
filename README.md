@@ -12,12 +12,12 @@ On an **RTX 4090**:
 - *Ultrafast* preset averages **27.13 dB in 10.51 seconds** on the same card.<br>
 - *Quality* preset averages **27.90 dB PSNR in 22.68 seconds** across the nine Mip-NeRF 360 scenes.
 
-Benchmarked on:
+Benchmarked on:<br>
 **NVIDIA**
 - 4050 Mobile (6gb)
 - 4080 (16gb)
 - 4090 (24gb)
-**AMD**
+**AMD**<br>
 - Radeon RX 7900 XT (20gb)
 **INTEL**
 - TBD
